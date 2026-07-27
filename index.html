@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>وِرْد — متابعة الحفظ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1f1a;
+    --bg2:#0e2a23;
+    --card:#123329;
+    --card2:#163d31;
+    --line:#1f4a3c;
+    --ink:#eaf2ec;
+    --muted:#8fa79b;
+    --gold:#d4af5a;
+    --gold-soft:#b9974a;
+    --amber:#d68a4e;
+    --green:#5fbf8f;
+    --new:#7fc9a6;
+    --near:#e2c169;
+    --far:#8fb7d6;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Cairo',system-ui,sans-serif;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #14392e 0%, var(--bg) 60%);
+    color:var(--ink);
+    min-height:100vh;
+    padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 24px);
+    line-height:1.6;
+  }
+  .wrap{max-width:520px;margin:0 auto;}
+  header.top{
+    display:flex;align-items:baseline;justify-content:space-between;
+    padding:22px 4px 10px;
+  }
+  .brand{font-family:'Amiri',serif;font-size:34px;font-weight:700;color:var(--gold);letter-spacing:1px;}
+  .brand small{display:block;font-family:'Cairo';font-size:11px;color:var(--muted);letter-spacing:0;margin-top:-4px;font-weight:500;}
+  .dateline{text-align:left;font-size:12px;color:var(--muted);}
+  .dateline b{display:block;color:var(--ink);font-size:13px;font-weight:600;}
+
+  .status{
+    border-radius:16px;padding:12px 16px;margin:6px 0 14px;
+    font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;
+  }
+  .status .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .status.ontrack{background:rgba(95,191,143,.12);color:var(--green);}
+  .status.ontrack .dot{background:var(--green);box-shadow:0 0 10px var(--green);}
+  .status.behind{background:rgba(214,138,78,.14);color:var(--amber);}
+  .status.behind .dot{background:var(--amber);box-shadow:0 0 10px var(--amber);}
+  .status.done{background:rgba(212,175,90,.12);color:var(--gold);}
+  .status.done .dot{background:var(--gold);box-shadow:0 0 10px var(--gold);}
+
+  .card{
+    background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--line);
+    border-radius:22px;
+    padding:6px 18px 18px;
+    box-shadow:0 18px 40px -24px rgba(0,0,0,.7);
+  }
+  .card .sess{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 2px 12px;border-bottom:1px solid var(--line);
+  }
+  .sess .label{font-size:12px;color:var(--muted);font-weight:500;}
+  .sess .num{font-family:'Amiri',serif;font-size:20px;color:var(--gold);font-weight:700;}
+
+  .track{padding:15px 2px;border-bottom:1px solid var(--line);}
+  .track:last-of-type{border-bottom:none;}
+  .track .head{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600;}
+  .track .head .chip{width:8px;height:8px;border-radius:3px;flex:none;}
+  .track .body{font-size:16.5px;font-weight:600;color:var(--ink);}
+  .track .body .big{font-family:'Amiri',serif;font-size:22px;color:var(--gold);font-weight:700;}
+  .track.new .chip{background:var(--new);}
+  .track.near .chip{background:var(--near);}
+  .track.far .chip{background:var(--far);}
+
+  .btn{
+    width:100%;border:none;border-radius:16px;margin-top:16px;
+    padding:17px;font-family:'Cairo';font-size:17px;font-weight:700;cursor:pointer;
+    transition:transform .08s ease, opacity .2s;
+  }
+  .btn:active{transform:scale(.985);}
+  .btn.primary{background:linear-gradient(180deg,var(--gold),var(--gold-soft));color:#1a1305;box-shadow:0 10px 24px -12px var(--gold);}
+  .btn.catchup{background:linear-gradient(180deg,var(--amber),#b96f38);color:#1a1305;box-shadow:0 10px 24px -12px var(--amber);}
+  .btn.disabled{background:#16352b;color:var(--muted);cursor:default;box-shadow:none;}
+
+  .meta{display:flex;gap:10px;margin-top:14px;}
+  .metabox{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:11px;text-align:center;}
+  .metabox b{display:block;font-family:'Amiri',serif;font-size:24px;color:var(--gold);line-height:1.1;}
+  .metabox span{font-size:11px;color:var(--muted);}
+
+  .foot{margin-top:18px;text-align:center;}
+  .link{background:none;border:none;color:var(--muted);font-family:'Cairo';font-size:12.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:12px;display:none;}
+  .panel.show{display:block;}
+  .panel h3{margin:0 0 10px;font-size:14px;color:var(--gold);font-weight:700;}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;font-size:13.5px;}
+  .row input{width:70px;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px;font-family:'Cairo';text-align:center;font-size:15px;}
+  .row .mini{padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--ink);font-family:'Cairo';font-size:13px;cursor:pointer;font-weight:600;}
+  .danger{color:var(--amber);border-color:rgba(214,138,78,.4)!important;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.7;}
+  .coderow{display:flex;gap:8px;align-items:center;margin:8px 0;}
+  .coderow code{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-family:'Cairo',monospace;font-size:12.5px;color:var(--gold);direction:ltr;text-align:left;overflow-x:auto;white-space:nowrap;}
+  .coderow input{direction:ltr;text-align:left;}
+
+  .loading{text-align:center;padding:80px 20px;color:var(--muted);}
+  .toast{position:fixed;bottom:26px;right:50%;transform:translateX(50%) translateY(20px);
+    background:var(--gold);color:#1a1305;padding:11px 20px;border-radius:14px;font-weight:700;font-size:14px;
+    opacity:0;pointer-events:none;transition:.3s;box-shadow:0 10px 30px -8px rgba(0,0,0,.6);z-index:9;}
+  .toast.show{opacity:1;transform:translateX(50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="loading" id="loading">…جارٍ التحميل</div>
+</div>
+<div class="toast" id="toast">أحسنت 🌿</div>
+
+<script>
+const STORE_KEY = 'wird-quran-tracker-v1';
+const DAY_NAMES = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+/* ---------- date helpers (local) ---------- */
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function parseYmd(s){const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function addDays(s,n){const d=parseYmd(s);d.setDate(d.getDate()+n);return ymd(d);}
+function diffDays(a,b){return Math.round((parseYmd(a)-parseYmd(b))/86400000);}
+function todayStr(){return ymd(new Date());}
+function prettyDate(s){
+  const d=parseYmd(s);
+  try{return d.toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'});}
+  catch(e){return DAY_NAMES[d.getDay()]+' '+s;}
+}
+function hijriToday(){
+  try{return new Date().toLocaleDateString('ar-SA-u-ca-islamic-umalqura',{day:'numeric',month:'long',year:'numeric'});}
+  catch(e){return '';}
+}
+
+/* ---------- program generator ----------
+   globalIndex 0,1,2 = transitional days (finishing Hizb 10).
+   From index 3 onward = structured program starting Hizb 11, quarter 1.
+   Per hizb: 5 weeks (4 memorizing quarters + 1 review week) = 35 sessions.
+------------------------------------------ */
+function farReview(globalIndex, completedHizbs){
+  const perDay=Math.max(1,Math.ceil(completedHizbs/14));
+  const out=[];
+  for(let k=0;k<perDay;k++) out.push(((globalIndex+k)%completedHizbs)+1);
+  return out;
+}
+function getSession(globalIndex, priorHizbs){
+  // priorHizbs = hizbs fully memorized before program start (default 10)
+  if(globalIndex<3){
+    const pre=[
+      {new:'أكمل ما تبقّى من الربع الأخير (الربع 4) من الحزب 10', near:priorHizbs-1, near2:priorHizbs, phase:'إتمام الحزب 10'},
+      {new:'سرد الربع 4 من الحزب 10 كاملاً', near:priorHizbs, near2:priorHizbs-1, phase:'إتمام الحزب 10'},
+      {new:'سرد الحزب 10 كاملاً وتثبيته', near:priorHizbs-1, near2:priorHizbs, phase:'إتمام الحزب 10'}
+    ][globalIndex];
+    return {
+      newTask:pre.new, nearMain:pre.near, nearAlt:pre.near2,
+      far:farReview(globalIndex,priorHizbs), phase:pre.phase, isReviewWeek:false
+    };
+  }
+  const s=globalIndex-3;
+  const hizbOffset=Math.floor(s/35);
+  const memoHizb=(priorHizbs+1)+hizbOffset;
+  const completedHizbs=priorHizbs+hizbOffset;
+  const within=s%35, week=Math.floor(within/7), day=within%7;
+  let newTask, isReviewWeek=false, phase;
+  if(week<4){
+    const q=week+1;
+    phase='الحزب '+memoHizb+' · الربع '+q;
+    if(day<=4) newTask='الحزب '+memoHizb+' — الربع '+q+': احفظ المقطع اليومي ('+(day+1)+'/5) ≈ نصف صفحة';
+    else if(day===5) newTask='سرد الربع '+q+' من الحزب '+memoHizb+' كاملاً';
+    else newTask='تثبيت الربع '+q+' من الحزب '+memoHizb+' وربطه بما قبله';
+  }else{
+    isReviewWeek=true;
+    phase='أسبوع مراجعة · الحزب '+memoHizb;
+    newTask='أسبوع مراجعة — لا حفظ جديد. ثبّت الحزب '+memoHizb+' كاملاً';
+  }
+  const nearMain = (day%2===0)?memoHizb-1:memoHizb-2;
+  const nearAlt  = (day%2===0)?memoHizb-2:memoHizb-1;
+  return {
+    newTask, nearMain:Math.max(1,nearMain), nearAlt:Math.max(1,nearAlt),
+    far:farReview(globalIndex, isReviewWeek?completedHizbs+1:completedHizbs),
+    phase, isReviewWeek
+  };
+}
+
+/* ---------- storage (resilient, dual-layer) ----------
+   Layer 1: localStorage  -> works when opened standalone in Safari / Home Screen,
+            survives closing & reopening the app, no action needed.
+   Layer 2: window.storage -> works inside the Claude app and syncs to your account
+            (so it follows you across devices when opened there).
+   We write to BOTH every time, and on load prefer whichever holds the most progress.
+------------------------------------------------------ */
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function withTimeout(p,ms){return Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);}
+async function accGet(k){try{if(!(window.storage&&window.storage.get))return null;const r=await withTimeout(window.storage.get(k),1200);return (r&&r.value)?r.value:null;}catch(e){return null;}}
+async function accSet(k,v){try{if(!(window.storage&&window.storage.set))return;await withTimeout(window.storage.set(k,v),1200);}catch(e){}}
+
+function normalize(st){
+  if(!st||typeof st!=='object') return null;
+  if(typeof st.completed!=='number'||st.completed<0) st.completed=0;
+  if(typeof st.startDate!=='string') st.startDate=todayStr();
+  if(typeof st.priorHizbs!=='number') st.priorHizbs=10;
+  return st;
+}
+async function loadState(){
+  let local=null, acc=null;
+  try{const s=lsGet(STORE_KEY); if(s) local=normalize(JSON.parse(s));}catch(e){}
+  try{const s=await accGet(STORE_KEY); if(s) acc=normalize(JSON.parse(s));}catch(e){}
+  let st=null;
+  if(local&&acc) st=(acc.completed>=local.completed)?acc:local; // prefer the further-along copy
+  else st=local||acc;
+  if(!st){ st={completed:0,startDate:todayStr(),priorHizbs:10}; }
+  await saveState(st); // heal both layers
+  return st;
+}
+async function saveState(st){
+  const json=JSON.stringify(st);
+  lsSet(STORE_KEY,json);
+  await accSet(STORE_KEY,json);
+}
+
+/* backup code: one short string that fully rebuilds your state */
+function makeCode(st){return 'WIRD|'+st.startDate+'|'+st.completed+'|'+st.priorHizbs;}
+function parseCode(code){
+  const p=(code||'').trim().split('|');
+  if(p.length!==4||p[0]!=='WIRD') return null;
+  const d=p[1], c=parseInt(p[2],10), h=parseInt(p[3],10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||isNaN(c)||isNaN(h)) return null;
+  return {startDate:d,completed:c,priorHizbs:h};
+}
+
+/* ---------- app ---------- */
+let STATE=null;
+
+function computeView(){
+  const today=todayStr();
+  const daysElapsed=Math.max(0,diffDays(today,STATE.startDate));
+  const completed=STATE.completed;
+  const overdue=daysElapsed-completed;          // >0 => current session is from a past day
+  const canComplete=completed<=daysElapsed;     // one per day, more allowed only when behind
+  const scheduledDate=addDays(STATE.startDate,completed);
+  const sess=getSession(completed, STATE.priorHizbs);
+  return {today,daysElapsed,completed,overdue,canComplete,scheduledDate,sess};
+}
+
+function render(){
+  const v=computeView();
+  const s=v.sess;
+  let statusClass, statusText;
+  if(!v.canComplete){ statusClass='done'; statusText='أنجزت جلسة اليوم — عُد في الجلسة القادمة'; }
+  else if(v.overdue>0){ statusClass='behind'; statusText='متأخر بـ '+v.overdue+' جلسة — هذه جلسة يوم '+prettyDate(v.scheduledDate); }
+  else { statusClass='ontrack'; statusText='جلسة اليوم جاهزة'; }
+
+  const farTxt = s.far.map(h=>'الحزب '+h).join(' ، ');
+  const btnCanCatch = v.canComplete && v.overdue>0;
+
+  document.getElementById('app').innerHTML = `
+    <header class="top">
+      <div class="brand">وِرْد<small>متابعة الحفظ اليومية</small></div>
+      <div class="dateline"><b>${prettyDate(v.today)}</b>${hijriToday()}</div>
+    </header>
+
+    <div class="status ${statusClass}"><span class="dot"></span>${statusText}</div>
+
+    <div class="card">
+      <div class="sess">
+        <span class="label">${s.phase}</span>
+        <span class="num">الجلسة ${v.completed+1}</span>
+      </div>
+
+      <div class="track new">
+        <div class="head"><span class="chip"></span>الحفظ الجديد</div>
+        <div class="body">${s.newTask}</div>
+      </div>
+
+      <div class="track near">
+        <div class="head"><span class="chip"></span>مراجعة قريبة (تثبيت الحديث)</div>
+        <div class="body"><span class="big">الحزب ${s.nearMain}</span></div>
+      </div>
+
+      <div class="track far">
+        <div class="head"><span class="chip"></span>مراجعة بعيدة (الدورة)</div>
+        <div class="body"><span class="big">${farTxt}</span></div>
+      </div>
+
+      ${
+        v.canComplete
+        ? `<button class="btn ${btnCanCatch?'catchup':'primary'}" onclick="markDone()">
+             ${btnCanCatch?'أنجزت — تابع التعويض ✓':'أنجزت هذه الجلسة ✓'}
+           </button>`
+        : `<button class="btn disabled">أحسنت — تم إنجاز اليوم 🌿</button>`
+      }
+
+      <div class="meta">
+        <div class="metabox"><b>${v.completed}</b><span>جلسة منجزة</span></div>
+        <div class="metabox"><b>${v.overdue>0?v.overdue:0}</b><span>متأخرات</span></div>
+        <div class="metabox"><b>${STATE.priorHizbs+Math.floor(Math.max(0,v.completed-3)/35)}</b><span>محفوظ (حزب)</span></div>
+      </div>
+    </div>
+
+    <div class="foot"><button class="link" onclick="togglePanel()">إعدادات ونقطة البداية</button></div>
+
+    <div class="panel" id="panel">
+      <h3>النسخة الاحتياطية</h3>
+      <p class="hint" style="margin-top:0">هذا الرمز يحفظ حالتك كاملة. انسخه واحفظه في ملاحظاتك من حين لآخر. إن مُحي شيء يوماً ما، ألصقه في «استعادة» أدناه فيعود كل شيء.</p>
+      <div class="coderow">
+        <code id="backupCode">${makeCode(STATE)}</code>
+        <button class="mini" onclick="copyCode(this)">نسخ</button>
+      </div>
+
+      <h3 style="margin-top:18px">استعادة</h3>
+      <div class="row">
+        <span>الصق رمز النسخة</span>
+      </div>
+      <div class="coderow">
+        <input id="codeInput" type="text" placeholder="WIRD|2026-07-27|5|10" style="flex:1;width:auto">
+        <button class="mini" onclick="restoreFromCode()">استعادة</button>
+      </div>
+      <div class="hint" style="margin:6px 0 0">أو أدخِل الرقمين يدوياً:</div>
+      <div class="row">
+        <span>تاريخ البداية</span>
+        <input id="startInput" type="date" value="${STATE.startDate}" style="width:150px">
+      </div>
+      <div class="row">
+        <span>عدد الجلسات المنجَزة</span>
+        <input id="compInput" type="number" min="0" value="${STATE.completed}">
+      </div>
+      <div class="row">
+        <span>تطبيق الأرقام</span>
+        <button class="mini" onclick="restoreFromFields()">استعادة</button>
+      </div>
+
+      <h3 style="margin-top:18px">إعدادات</h3>
+      <div class="row">
+        <span>الأحزاب المحفوظة سابقاً</span>
+        <input id="priorInput" type="number" min="0" max="60" value="${STATE.priorHizbs}">
+      </div>
+      <div class="row">
+        <span>حفظ التعديل</span>
+        <button class="mini" onclick="savePrior()">حفظ</button>
+      </div>
+      <div class="row">
+        <span>تصفير كامل والبدء من اليوم</span>
+        <button class="mini danger" onclick="resetAll()">تصفير</button>
+      </div>
+      <div class="hint">
+        الدورة: ربع/أسبوع (5 أيام مقاطع + سرد + تثبيت)، وبعد 4 أسابيع أسبوع مراجعة.
+        التخزين تلقائي: يُحفظ في هذه الصفحة عند كل ضغطة، ويبقى بعد إغلاق التطبيق وإعادة فتحه.
+        البرنامج لا يتقدّم إلا بضغطك «أنجزت»؛ وما فاتك يتراكم كمتأخرات حتى تُكمله.
+      </div>
+    </div>
+  `;
+}
+
+async function markDone(){
+  const v=computeView();
+  if(!v.canComplete) return;
+  STATE.completed+=1;
+  await saveState(STATE);
+  showToast();
+  render();
+}
+async function savePrior(){
+  const val=parseInt(document.getElementById('priorInput').value,10);
+  if(!isNaN(val)&&val>=0&&val<=60){ STATE.priorHizbs=val; await saveState(STATE); render(); togglePanel(); }
+}
+async function resetAll(){
+  if(!confirm('تصفير كامل؟ سيبدأ العدّ من اليوم.')) return;
+  STATE={completed:0,startDate:todayStr(),priorHizbs:STATE.priorHizbs};
+  await saveState(STATE);
+  render(); document.getElementById('panel').classList.add('show');
+}
+function copyCode(b){
+  const code=makeCode(STATE);
+  const done=()=>{if(b){const t=b.textContent;b.textContent='تم ✓';setTimeout(()=>b.textContent=t,1200);}};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(code).then(done,done);}
+  else{try{const el=document.getElementById('backupCode');const r=document.createRange();r.selectNode(el);getSelection().removeAllRanges();getSelection().addRange(r);document.execCommand('copy');done();}catch(e){}}
+}
+async function restoreFromCode(){
+  const parsed=parseCode(document.getElementById('codeInput').value);
+  if(!parsed){alert('الرمز غير صحيح. الشكل الصحيح مثل: WIRD|2026-07-27|5|10');return;}
+  if(!confirm('استعادة الحالة من هذا الرمز؟ ستُستبدل الحالة الحالية.'))return;
+  STATE=parsed; await saveState(STATE); render(); document.getElementById('panel').classList.add('show');
+}
+async function restoreFromFields(){
+  const d=document.getElementById('startInput').value;
+  const c=parseInt(document.getElementById('compInput').value,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||isNaN(c)||c<0){alert('تأكد من تاريخ البداية وعدد الجلسات.');return;}
+  if(!confirm('تطبيق هذين الرقمين؟ ستُستبدل الحالة الحالية.'))return;
+  STATE={startDate:d,completed:c,priorHizbs:STATE.priorHizbs};
+  await saveState(STATE); render(); document.getElementById('panel').classList.add('show');
+}
+function togglePanel(){document.getElementById('panel').classList.toggle('show');}
+let toastT;
+function showToast(){const t=document.getElementById('toast');t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1400);}
+
+(async function init(){
+  STATE=await loadState();
+  render();
+})();
+</script>
+</body>
+</html>
