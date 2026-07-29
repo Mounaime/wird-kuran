@@ -157,10 +157,14 @@ function nextFridayStr(){
    From index 3 onward = structured program starting Hizb 11, quarter 1.
    Per hizb: 5 weeks (4 memorizing quarters + 1 review week) = 35 sessions.
 ------------------------------------------ */
+/* The two freshest hizbs are handled by the NEAR track (every other day), so the FAR
+   rotation covers only the settled older material -> no double review in one session. */
+function farPoolSize(completedHizbs){return Math.max(1, completedHizbs-2);}
 function farReview(globalIndex, completedHizbs){
-  const perDay=Math.max(1,Math.ceil(completedHizbs/14));
+  const pool=farPoolSize(completedHizbs);
+  const perDay=Math.max(1,Math.ceil(pool/14));
   const out=[];
-  for(let k=0;k<perDay;k++) out.push(((globalIndex+k)%completedHizbs)+1);
+  for(let k=0;k<perDay;k++) out.push(((globalIndex+k)%pool)+1);
   return out;
 }
 /* Review period is ALWAYS one full week (7 days), whatever the amount memorized. */
@@ -416,8 +420,8 @@ function render(){
         <button class="mini danger" onclick="resetAll()">تصفير</button>
       </div>
       <div class="hint">
-        <b style="color:var(--gold)">الإصدار 6 — المراجعة الشاملة تُكمل الدورة</b><br>
-        الأسبوع من الجمعة إلى الخميس (التسميع على الشيخ 21:00). بعد إتمام أي حزب يأتي أسبوع مراجعة شاملة يُعرَض في مسار «المراجعة البعيدة»: لا حفظ جديد، ويُقسَّم كل المحفوظ على السبعة أيام، ويبدأ من حيث توقّفت الدورة (لا يعيد ما راجعتَه أمس). ثم يبدأ الحزب التالي: ربع/أسبوع.
+        <b style="color:var(--gold)">الإصدار 7 — فصل المسارين</b><br>
+        المسار القريب: الحزبان الأحدثان بالتناوب (يوماً بيوم). المسار البعيد: دورة على المحفوظ القديم المستقرّ فقط، فلا يتكرّر حزب في مساري الجلسة نفسها. الأسبوع من الجمعة إلى الخميس (التسميع 21:00). وبعد إتمام أي حزب: أسبوع مراجعة شاملة يُعرَض في المسار البعيد، يشمل كل المحفوظ (ومنه الأحدث) ويبدأ من حيث توقّفت الدورة.
         التخزين تلقائي: يُحفظ في هذه الصفحة عند كل ضغطة، ويبقى بعد إغلاق التطبيق وإعادة فتحه.
         البرنامج لا يتقدّم إلا بضغطك «أنجزت»؛ وما فاتك يتراكم كمتأخرات حتى تُكمله.
       </div>
