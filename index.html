@@ -165,22 +165,30 @@ function farReview(globalIndex, completedHizbs){
 }
 /* Review period is ALWAYS one full week (7 days), whatever the amount memorized. */
 const RDAYS=7;
-/* Build the full-review sweep: hizbs 1..total spread as evenly as possible over the 7 days.
-   base per day, and the first (total mod 7) days take one extra -> full coverage, no idle day. */
-function sweepFor(total, day){
+/* Build the full-review sweep: ALL hizbs 1..total, but ordered so it CONTINUES the
+   rotation (starts at startAt and wraps) -> no hizb repeated right after being reviewed.
+   Spread as evenly as possible over the 7 days: first (total mod 7) days take one extra. */
+function sweepFor(total, day, startAt){
+  const order=[];
+  for(let i=0;i<total;i++) order.push(((startAt-1+i)%total)+1);
   const base=Math.floor(total/RDAYS), rem=total%RDAYS;
-  let start=1;
-  for(let d=0;d<day;d++) start+=base+(d<rem?1:0);
+  let from=0;
+  for(let d=0;d<day;d++) from+=base+(d<rem?1:0);
   const count=base+(day<rem?1:0);
-  const out=[];
-  for(let k=0;k<count;k++){ const h=start+k; if(h<=total) out.push(h); }
-  return out.length?out:[total]; // if total < 7, trailing days re-consolidate the freshest hizb
+  const out=order.slice(from,from+count);
+  return out.length?out:[order[order.length-1]]; // if total < 7, trailing days re-consolidate
 }
-function reviewSession(total, day){
+/* where yesterday's rotation stopped -> the sweep resumes right after it */
+function resumeAfter(prevGlobalIndex, prevPool, total){
+  const prev=farReview(prevGlobalIndex, prevPool);
+  const last=prev[prev.length-1];
+  return (last%total)+1;
+}
+function reviewSession(total, day, startAt){
   return {
     newTask:'لا حفظ جديد هذا الأسبوع — مراجعة شاملة لكل المحفوظ (اليوم '+(day+1)+'/'+RDAYS+')',
     nearMain:total, nearAlt:Math.max(1,total-1),
-    far:sweepFor(total,day),
+    far:sweepFor(total,day,startAt),
     phase:'أسبوع المراجعة الشاملة · '+total+' حزباً',
     isReviewWeek:true, memorized:total, isRecitationDay:(day===6)
   };
@@ -203,8 +211,8 @@ function getSession(globalIndex, priorHizbs){
   let s=globalIndex-3;
 
   /* STEP 1: full review week of everything memorized so far (hizbs 1..priorHizbs),
-     because the hizb was just completed. Only then does the next hizb begin. */
-  if(s<RDAYS) return reviewSession(priorHizbs, s);
+     because the hizb was just completed. It RESUMES the rotation (not from hizb 1). */
+  if(s<RDAYS) return reviewSession(priorHizbs, s, resumeAfter(2, priorHizbs, priorHizbs));
   s-=RDAYS;
 
   /* STEP 2: repeating cycles -> 28 days memorizing one hizb + 7 days full review */
@@ -228,8 +236,9 @@ function getSession(globalIndex, priorHizbs){
       isReviewWeek:false, memorized:completedHizbs, isRecitationDay:(day===6)
     };
   }
-  /* review week: the hizb just finished is included */
-  return reviewSession(memoHizb, s-28);
+  /* review week: the hizb just finished is included; resume rotation after yesterday's */
+  const rDay=s-28;
+  return reviewSession(memoHizb, rDay, resumeAfter(globalIndex-rDay-1, completedHizbs, memoHizb));
 }
 
 /* ---------- storage (resilient, dual-layer) ----------
@@ -407,8 +416,8 @@ function render(){
         <button class="mini danger" onclick="resetAll()">تصفير</button>
       </div>
       <div class="hint">
-        <b style="color:var(--gold)">الإصدار 5 — الأسبوع من الجمعة إلى الخميس</b><br>
-        الأسبوع يبدأ الجمعة وينتهي الخميس بالتسميع على الشيخ (21:00). بعد إتمام أي حزب يأتي مباشرةً أسبوع مراجعة شاملة: لا حفظ جديد، ويُقسَّم كل المحفوظ على أيام الأسبوع السبعة. ثم يبدأ الحزب التالي: ربع/أسبوع (5 أيام مقاطع + سرد + تثبيت).
+        <b style="color:var(--gold)">الإصدار 6 — المراجعة الشاملة تُكمل الدورة</b><br>
+        الأسبوع من الجمعة إلى الخميس (التسميع على الشيخ 21:00). بعد إتمام أي حزب يأتي أسبوع مراجعة شاملة يُعرَض في مسار «المراجعة البعيدة»: لا حفظ جديد، ويُقسَّم كل المحفوظ على السبعة أيام، ويبدأ من حيث توقّفت الدورة (لا يعيد ما راجعتَه أمس). ثم يبدأ الحزب التالي: ربع/أسبوع.
         التخزين تلقائي: يُحفظ في هذه الصفحة عند كل ضغطة، ويبقى بعد إغلاق التطبيق وإعادة فتحه.
         البرنامج لا يتقدّم إلا بضغطك «أنجزت»؛ وما فاتك يتراكم كمتأخرات حتى تُكمله.
       </div>
