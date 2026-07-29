@@ -155,6 +155,10 @@ function farReview(globalIndex, completedHizbs){
   for(let k=0;k<perDay;k++) out.push(((globalIndex+k)%completedHizbs)+1);
   return out;
 }
+/* Review period adapts to workload: enough whole weeks to keep <=3 hizbs/day.
+   total<=21 -> 7 days | 22..42 -> 14 days | >42 -> 21 days */
+function reviewDaysFor(total){return 7*Math.max(1,Math.ceil(total/21));}
+
 function getSession(globalIndex, priorHizbs){
   // priorHizbs = hizbs fully memorized before program start (default 10)
   if(globalIndex<3){
@@ -168,29 +172,47 @@ function getSession(globalIndex, priorHizbs){
       far:farReview(globalIndex,priorHizbs), phase:pre.phase, isReviewWeek:false
     };
   }
-  const s=globalIndex-3;
-  const hizbOffset=Math.floor(s/35);
-  const memoHizb=(priorHizbs+1)+hizbOffset;
-  const completedHizbs=priorHizbs+hizbOffset;
-  const within=s%35, week=Math.floor(within/7), day=within%7;
+  /* Walk hizb cycles of variable length: 28 memorizing days + adaptive review days */
+  let s=globalIndex-3;
+  let memoHizb=priorHizbs+1;
+  let rDays=reviewDaysFor(memoHizb);
+  while(s>=28+rDays){
+    s-=28+rDays;
+    memoHizb++;
+    rDays=reviewDaysFor(memoHizb);
+  }
+  const completedHizbs=memoHizb-1;
   let newTask, isReviewWeek=false, phase;
-  if(week<4){
-    const q=week+1;
+  if(s<28){
+    const week=Math.floor(s/7), day=s%7, q=week+1;
     phase='الحزب '+memoHizb+' · الربع '+q;
     if(day<=4) newTask='الحزب '+memoHizb+' — الربع '+q+': احفظ المقطع اليومي ('+(day+1)+'/5) ≈ نصف صفحة';
     else if(day===5) newTask='سرد الربع '+q+' من الحزب '+memoHizb+' كاملاً';
     else newTask='تثبيت الربع '+q+' من الحزب '+memoHizb+' وربطه بما قبله';
-  }else{
-    isReviewWeek=true;
-    phase='أسبوع مراجعة · الحزب '+memoHizb;
-    newTask='أسبوع مراجعة — لا حفظ جديد. ثبّت الحزب '+memoHizb+' كاملاً';
+    const nearMain=(day%2===0)?memoHizb-1:memoHizb-2;
+    const nearAlt =(day%2===0)?memoHizb-2:memoHizb-1;
+    return {
+      newTask, nearMain:Math.max(1,nearMain), nearAlt:Math.max(1,nearAlt),
+      far:farReview(globalIndex, completedHizbs),
+      phase, isReviewWeek:false
+    };
   }
-  const nearMain = (day%2===0)?memoHizb-1:memoHizb-2;
-  const nearAlt  = (day%2===0)?memoHizb-2:memoHizb-1;
+  /* Adaptive full-review period: sweep ALL memorized (1..memoHizb) across rDays */
+  isReviewWeek=true;
+  const day=s-28;
+  const total=memoHizb; // includes the freshly finished hizb
+  const weeksTxt=(rDays===7)?'أسبوع':(rDays===14)?'أسبوعان':'ثلاثة أسابيع';
+  phase='مراجعة شاملة ('+weeksTxt+') · '+total+' حزباً';
+  newTask='لا حفظ جديد — مراجعة شاملة لكل المحفوظ (اليوم '+(day+1)+'/'+rDays+')';
+  const perDay=Math.ceil(total/rDays);
+  const start=day*perDay+1;
+  const end=Math.min(start+perDay-1,total);
+  let sweep=[];
+  for(let h=start;h<=end;h++) sweep.push(h);
+  if(sweep.length===0) sweep=[total]; // spare days at period end -> re-consolidate the fresh hizb
   return {
-    newTask, nearMain:Math.max(1,nearMain), nearAlt:Math.max(1,nearAlt),
-    far:farReview(globalIndex, isReviewWeek?completedHizbs+1:completedHizbs),
-    phase, isReviewWeek
+    newTask, nearMain:memoHizb, nearAlt:Math.max(1,memoHizb-1),
+    far:sweep, phase, isReviewWeek
   };
 }
 
@@ -356,7 +378,7 @@ function render(){
         <button class="mini danger" onclick="resetAll()">تصفير</button>
       </div>
       <div class="hint">
-        الدورة: ربع/أسبوع (5 أيام مقاطع + سرد + تثبيت)، وبعد 4 أسابيع أسبوع مراجعة.
+        الدورة: ربع/أسبوع (5 أيام مقاطع + سرد + تثبيت). بعد إتمام الحزب (4 أسابيع) يأتي أسبوع المراجعة الشاملة: لا حفظ جديد، ويُقسَّم كل المحفوظ على أيام الأسبوع حتى تُختَم مراجعته كاملاً قبل بدء الحزب التالي.
         التخزين تلقائي: يُحفظ في هذه الصفحة عند كل ضغطة، ويبقى بعد إغلاق التطبيق وإعادة فتحه.
         البرنامج لا يتقدّم إلا بضغطك «أنجزت»؛ وما فاتك يتراكم كمتأخرات حتى تُكمله.
       </div>
