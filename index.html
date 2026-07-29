@@ -110,6 +110,8 @@
   .coderow{display:flex;gap:8px;align-items:center;margin:8px 0;}
   .coderow code{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-family:'Cairo',monospace;font-size:12.5px;color:var(--gold);direction:ltr;text-align:left;overflow-x:auto;white-space:nowrap;}
   .coderow input{direction:ltr;text-align:left;}
+  .tasmi{margin:14px 0 2px;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:700;
+    background:rgba(212,175,90,.14);color:var(--gold);border:1px solid rgba(212,175,90,.35);text-align:center;}
 
   .loading{text-align:center;padding:80px 20px;color:var(--muted);}
   .toast{position:fixed;bottom:26px;right:50%;transform:translateX(50%) translateY(20px);
@@ -143,6 +145,12 @@ function hijriToday(){
   try{return new Date().toLocaleDateString('ar-SA-u-ca-islamic-umalqura',{day:'numeric',month:'long',year:'numeric'});}
   catch(e){return '';}
 }
+/* Week runs Friday -> Thursday (tasmi' to the sheikh on Thursday 21:00). */
+function nextFridayStr(){
+  const d=parseYmd(todayStr());
+  d.setDate(d.getDate()+((5-d.getDay()+7)%7)); // 0 if today is already Friday
+  return ymd(d);
+}
 
 /* ---------- program generator ----------
    globalIndex 0,1,2 = transitional days (finishing Hizb 10).
@@ -156,35 +164,58 @@ function farReview(globalIndex, completedHizbs){
   return out;
 }
 /* Review period is ALWAYS one full week (7 days), whatever the amount memorized. */
-function reviewDaysFor(total){return 7;}
+const RDAYS=7;
+/* Build the full-review sweep: hizbs 1..total spread as evenly as possible over the 7 days.
+   base per day, and the first (total mod 7) days take one extra -> full coverage, no idle day. */
+function sweepFor(total, day){
+  const base=Math.floor(total/RDAYS), rem=total%RDAYS;
+  let start=1;
+  for(let d=0;d<day;d++) start+=base+(d<rem?1:0);
+  const count=base+(day<rem?1:0);
+  const out=[];
+  for(let k=0;k<count;k++){ const h=start+k; if(h<=total) out.push(h); }
+  return out.length?out:[total]; // if total < 7, trailing days re-consolidate the freshest hizb
+}
+function reviewSession(total, day){
+  return {
+    newTask:'لا حفظ جديد هذا الأسبوع — مراجعة شاملة لكل المحفوظ (اليوم '+(day+1)+'/'+RDAYS+')',
+    nearMain:total, nearAlt:Math.max(1,total-1),
+    far:sweepFor(total,day),
+    phase:'أسبوع المراجعة الشاملة · '+total+' حزباً',
+    isReviewWeek:true, memorized:total, isRecitationDay:(day===6)
+  };
+}
 
 function getSession(globalIndex, priorHizbs){
   // priorHizbs = hizbs fully memorized before program start (default 10)
   if(globalIndex<3){
     const pre=[
-      {new:'أكمل ما تبقّى من الربع الأخير (الربع 4) من الحزب 10', near:priorHizbs-1, near2:priorHizbs, phase:'إتمام الحزب 10'},
-      {new:'سرد الربع 4 من الحزب 10 كاملاً', near:priorHizbs, near2:priorHizbs-1, phase:'إتمام الحزب 10'},
-      {new:'سرد الحزب 10 كاملاً وتثبيته', near:priorHizbs-1, near2:priorHizbs, phase:'إتمام الحزب 10'}
+      {new:'أكمل ما تبقّى من الربع الأخير (الربع 4) من الحزب '+priorHizbs, near:priorHizbs-1, near2:priorHizbs, phase:'إتمام الحزب '+priorHizbs},
+      {new:'سرد الربع 4 من الحزب '+priorHizbs+' كاملاً', near:priorHizbs, near2:priorHizbs-1, phase:'إتمام الحزب '+priorHizbs},
+      {new:'سرد الحزب '+priorHizbs+' كاملاً وتثبيته', near:priorHizbs-1, near2:priorHizbs, phase:'إتمام الحزب '+priorHizbs}
     ][globalIndex];
     return {
       newTask:pre.new, nearMain:pre.near, nearAlt:pre.near2,
-      far:farReview(globalIndex,priorHizbs), phase:pre.phase, isReviewWeek:false
+      far:farReview(globalIndex,priorHizbs), phase:pre.phase,
+      isReviewWeek:false, memorized:priorHizbs
     };
   }
-  /* Walk hizb cycles of variable length: 28 memorizing days + adaptive review days */
   let s=globalIndex-3;
+
+  /* STEP 1: full review week of everything memorized so far (hizbs 1..priorHizbs),
+     because the hizb was just completed. Only then does the next hizb begin. */
+  if(s<RDAYS) return reviewSession(priorHizbs, s);
+  s-=RDAYS;
+
+  /* STEP 2: repeating cycles -> 28 days memorizing one hizb + 7 days full review */
+  const CYCLE=28+RDAYS;
   let memoHizb=priorHizbs+1;
-  let rDays=reviewDaysFor(memoHizb);
-  while(s>=28+rDays){
-    s-=28+rDays;
-    memoHizb++;
-    rDays=reviewDaysFor(memoHizb);
-  }
+  while(s>=CYCLE){ s-=CYCLE; memoHizb++; }
   const completedHizbs=memoHizb-1;
-  let newTask, isReviewWeek=false, phase;
+
   if(s<28){
     const week=Math.floor(s/7), day=s%7, q=week+1;
-    phase='الحزب '+memoHizb+' · الربع '+q;
+    let newTask;
     if(day<=4) newTask='الحزب '+memoHizb+' — الربع '+q+': احفظ المقطع اليومي ('+(day+1)+'/5) ≈ نصف صفحة';
     else if(day===5) newTask='سرد الربع '+q+' من الحزب '+memoHizb+' كاملاً';
     else newTask='تثبيت الربع '+q+' من الحزب '+memoHizb+' وربطه بما قبله';
@@ -193,25 +224,12 @@ function getSession(globalIndex, priorHizbs){
     return {
       newTask, nearMain:Math.max(1,nearMain), nearAlt:Math.max(1,nearAlt),
       far:farReview(globalIndex, completedHizbs),
-      phase, isReviewWeek:false
+      phase:'الحزب '+memoHizb+' · الربع '+q,
+      isReviewWeek:false, memorized:completedHizbs, isRecitationDay:(day===6)
     };
   }
-  /* Adaptive full-review period: sweep ALL memorized (1..memoHizb) across rDays */
-  isReviewWeek=true;
-  const day=s-28;
-  const total=memoHizb; // includes the freshly finished hizb
-  phase='أسبوع المراجعة الشاملة · '+total+' حزباً';
-  newTask='لا حفظ جديد هذا الأسبوع — مراجعة شاملة لكل المحفوظ (اليوم '+(day+1)+'/7)';
-  const perDay=Math.ceil(total/rDays);
-  const start=day*perDay+1;
-  const end=Math.min(start+perDay-1,total);
-  let sweep=[];
-  for(let h=start;h<=end;h++) sweep.push(h);
-  if(sweep.length===0) sweep=[total]; // spare days at period end -> re-consolidate the fresh hizb
-  return {
-    newTask, nearMain:memoHizb, nearAlt:Math.max(1,memoHizb-1),
-    far:sweep, phase, isReviewWeek
-  };
+  /* review week: the hizb just finished is included */
+  return reviewSession(memoHizb, s-28);
 }
 
 /* ---------- storage (resilient, dual-layer) ----------
@@ -279,7 +297,13 @@ function render(){
   const v=computeView();
   const s=v.sess;
   let statusClass, statusText;
-  if(!v.canComplete){ statusClass='done'; statusText='أنجزت جلسة اليوم — عُد في الجلسة القادمة'; }
+  if(!v.canComplete){
+    statusClass='done';
+    const tomorrow=addDays(v.today,1);
+    if(v.scheduledDate===tomorrow) statusText='أنجزت جلسة اليوم — الجلسة القادمة غداً';
+    else if(diffDays(v.scheduledDate,v.today)>1) statusText='الجلسة القادمة تبدأ '+prettyDate(v.scheduledDate);
+    else statusText='أنجزت جلسة اليوم — عُد في الجلسة القادمة';
+  }
   else if(v.overdue>0){ statusClass='behind'; statusText='متأخر بـ '+v.overdue+' جلسة — هذه جلسة يوم '+prettyDate(v.scheduledDate); }
   else { statusClass='ontrack'; statusText='جلسة اليوم جاهزة'; }
 
@@ -315,6 +339,8 @@ function render(){
         <div class="body"><span class="big">${farTxt}</span></div>
       </div>
 
+      ${s.isRecitationDay?`<div class="tasmi">🕌 خِتام الأسبوع — التسميع على الشيخ الليلة 21:00</div>`:''}
+
       ${
         v.canComplete
         ? `<button class="btn ${btnCanCatch?'catchup':'primary'}" onclick="markDone()">
@@ -326,7 +352,7 @@ function render(){
       <div class="meta">
         <div class="metabox"><b>${v.completed}</b><span>جلسة منجزة</span></div>
         <div class="metabox"><b>${v.overdue>0?v.overdue:0}</b><span>متأخرات</span></div>
-        <div class="metabox"><b>${STATE.priorHizbs+Math.floor(Math.max(0,v.completed-3)/35)}</b><span>محفوظ (حزب)</span></div>
+        <div class="metabox"><b>${s.memorized}</b><span>محفوظ (حزب)</span></div>
       </div>
     </div>
 
@@ -364,6 +390,11 @@ function render(){
 
       <h3 style="margin-top:18px">إعدادات</h3>
       <div class="row">
+        <span>محاذاة الأسبوع مع الجمعة</span>
+        <button class="mini" onclick="alignFriday()">محاذاة</button>
+      </div>
+      <div class="hint" style="margin:0 0 6px">تجعل الجلسة القادمة تبدأ يوم الجمعة، فيصير كل أسبوع من الجمعة إلى الخميس، ويوافق اليوم السابع (الخميس) موعد التسميع على الشيخ.</div>
+      <div class="row">
         <span>الأحزاب المحفوظة سابقاً</span>
         <input id="priorInput" type="number" min="0" max="60" value="${STATE.priorHizbs}">
       </div>
@@ -376,8 +407,8 @@ function render(){
         <button class="mini danger" onclick="resetAll()">تصفير</button>
       </div>
       <div class="hint">
-        <b style="color:var(--gold)">الإصدار 3 — أسبوع المراجعة الشاملة</b><br>
-        الدورة: ربع/أسبوع (5 أيام مقاطع + سرد + تثبيت). بعد إتمام الحزب (4 أسابيع) يأتي أسبوع المراجعة الشاملة: لا حفظ جديد، ويُقسَّم كل المحفوظ على أيام الأسبوع السبعة حتى تُختَم مراجعته كاملاً قبل بدء الحزب التالي.
+        <b style="color:var(--gold)">الإصدار 5 — الأسبوع من الجمعة إلى الخميس</b><br>
+        الأسبوع يبدأ الجمعة وينتهي الخميس بالتسميع على الشيخ (21:00). بعد إتمام أي حزب يأتي مباشرةً أسبوع مراجعة شاملة: لا حفظ جديد، ويُقسَّم كل المحفوظ على أيام الأسبوع السبعة. ثم يبدأ الحزب التالي: ربع/أسبوع (5 أيام مقاطع + سرد + تثبيت).
         التخزين تلقائي: يُحفظ في هذه الصفحة عند كل ضغطة، ويبقى بعد إغلاق التطبيق وإعادة فتحه.
         البرنامج لا يتقدّم إلا بضغطك «أنجزت»؛ وما فاتك يتراكم كمتأخرات حتى تُكمله.
       </div>
@@ -422,6 +453,13 @@ async function restoreFromFields(){
   if(!confirm('تطبيق هذين الرقمين؟ ستُستبدل الحالة الحالية.'))return;
   STATE={startDate:d,completed:c,priorHizbs:STATE.priorHizbs};
   await saveState(STATE); render(); document.getElementById('panel').classList.add('show');
+}
+async function alignFriday(){
+  const target=nextFridayStr();
+  STATE.startDate=addDays(target,-STATE.completed);
+  await saveState(STATE); render();
+  document.getElementById('panel').classList.add('show');
+  alert('تمت المحاذاة: الجلسة القادمة تبدأ يوم الجمعة '+target);
 }
 function togglePanel(){document.getElementById('panel').classList.toggle('show');}
 let toastT;
