@@ -155,9 +155,8 @@ function farReview(globalIndex, completedHizbs){
   for(let k=0;k<perDay;k++) out.push(((globalIndex+k)%completedHizbs)+1);
   return out;
 }
-/* Review period adapts to workload: enough whole weeks to keep <=3 hizbs/day.
-   total<=21 -> 7 days | 22..42 -> 14 days | >42 -> 21 days */
-function reviewDaysFor(total){return 7*Math.max(1,Math.ceil(total/21));}
+/* Review period is ALWAYS one full week (7 days), whatever the amount memorized. */
+function reviewDaysFor(total){return 7;}
 
 function getSession(globalIndex, priorHizbs){
   // priorHizbs = hizbs fully memorized before program start (default 10)
@@ -201,9 +200,8 @@ function getSession(globalIndex, priorHizbs){
   isReviewWeek=true;
   const day=s-28;
   const total=memoHizb; // includes the freshly finished hizb
-  const weeksTxt=(rDays===7)?'أسبوع':(rDays===14)?'أسبوعان':'ثلاثة أسابيع';
-  phase='مراجعة شاملة ('+weeksTxt+') · '+total+' حزباً';
-  newTask='لا حفظ جديد — مراجعة شاملة لكل المحفوظ (اليوم '+(day+1)+'/'+rDays+')';
+  phase='أسبوع المراجعة الشاملة · '+total+' حزباً';
+  newTask='لا حفظ جديد هذا الأسبوع — مراجعة شاملة لكل المحفوظ (اليوم '+(day+1)+'/7)';
   const perDay=Math.ceil(total/rDays);
   const start=day*perDay+1;
   const end=Math.min(start+perDay-1,total);
@@ -378,7 +376,8 @@ function render(){
         <button class="mini danger" onclick="resetAll()">تصفير</button>
       </div>
       <div class="hint">
-        الدورة: ربع/أسبوع (5 أيام مقاطع + سرد + تثبيت). بعد إتمام الحزب (4 أسابيع) يأتي أسبوع المراجعة الشاملة: لا حفظ جديد، ويُقسَّم كل المحفوظ على أيام الأسبوع حتى تُختَم مراجعته كاملاً قبل بدء الحزب التالي.
+        <b style="color:var(--gold)">الإصدار 3 — أسبوع المراجعة الشاملة</b><br>
+        الدورة: ربع/أسبوع (5 أيام مقاطع + سرد + تثبيت). بعد إتمام الحزب (4 أسابيع) يأتي أسبوع المراجعة الشاملة: لا حفظ جديد، ويُقسَّم كل المحفوظ على أيام الأسبوع السبعة حتى تُختَم مراجعته كاملاً قبل بدء الحزب التالي.
         التخزين تلقائي: يُحفظ في هذه الصفحة عند كل ضغطة، ويبقى بعد إغلاق التطبيق وإعادة فتحه.
         البرنامج لا يتقدّم إلا بضغطك «أنجزت»؛ وما فاتك يتراكم كمتأخرات حتى تُكمله.
       </div>
