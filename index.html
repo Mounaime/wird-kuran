@@ -198,25 +198,27 @@ function reviewSession(total, day, startAt){
   };
 }
 
+const PRE=4; /* transitional days before the first full-review week */
 function getSession(globalIndex, priorHizbs){
   // priorHizbs = hizbs fully memorized before program start (default 10)
-  if(globalIndex<3){
+  if(globalIndex<PRE){
     const pre=[
       {new:'أكمل ما تبقّى من الربع الأخير (الربع 4) من الحزب '+priorHizbs, near:priorHizbs-1, near2:priorHizbs, phase:'إتمام الحزب '+priorHizbs},
       {new:'سرد الربع 4 من الحزب '+priorHizbs+' كاملاً', near:priorHizbs, near2:priorHizbs-1, phase:'إتمام الحزب '+priorHizbs},
-      {new:'سرد الحزب '+priorHizbs+' كاملاً وتثبيته', near:priorHizbs-1, near2:priorHizbs, phase:'إتمام الحزب '+priorHizbs}
+      {new:'سرد الحزب '+priorHizbs+' كاملاً وتثبيته', near:priorHizbs-1, near2:priorHizbs, phase:'إتمام الحزب '+priorHizbs},
+      {new:'لا حفظ جديد — تثبيت الحزب '+priorHizbs+' استعداداً للتسميع الليلة', near:priorHizbs, near2:priorHizbs-1, phase:'خِتام الحزب '+priorHizbs+' · التسميع'}
     ][globalIndex];
     return {
       newTask:pre.new, nearMain:pre.near, nearAlt:pre.near2,
       far:farReview(globalIndex,priorHizbs), phase:pre.phase,
-      isReviewWeek:false, memorized:priorHizbs
+      isReviewWeek:false, memorized:priorHizbs, isRecitationDay:(globalIndex===PRE-1)
     };
   }
-  let s=globalIndex-3;
+  let s=globalIndex-PRE;
 
   /* STEP 1: full review week of everything memorized so far (hizbs 1..priorHizbs),
      because the hizb was just completed. It RESUMES the rotation (not from hizb 1). */
-  if(s<RDAYS) return reviewSession(priorHizbs, s, resumeAfter(2, priorHizbs, priorHizbs));
+  if(s<RDAYS) return reviewSession(priorHizbs, s, resumeAfter(PRE-1, priorHizbs, priorHizbs));
   s-=RDAYS;
 
   /* STEP 2: repeating cycles -> 28 days memorizing one hizb + 7 days full review */
@@ -420,8 +422,8 @@ function render(){
         <button class="mini danger" onclick="resetAll()">تصفير</button>
       </div>
       <div class="hint">
-        <b style="color:var(--gold)">الإصدار 7 — فصل المسارين</b><br>
-        المسار القريب: الحزبان الأحدثان بالتناوب (يوماً بيوم). المسار البعيد: دورة على المحفوظ القديم المستقرّ فقط، فلا يتكرّر حزب في مساري الجلسة نفسها. الأسبوع من الجمعة إلى الخميس (التسميع 21:00). وبعد إتمام أي حزب: أسبوع مراجعة شاملة يُعرَض في المسار البعيد، يشمل كل المحفوظ (ومنه الأحدث) ويبدأ من حيث توقّفت الدورة.
+        <b style="color:var(--gold)">الإصدار 8 — خِتام الحزب يوم الخميس</b><br>
+        الأسبوع من الجمعة إلى الخميس، وآخر يوم فيه هو التسميع على الشيخ (21:00). المسار القريب: الحزبان الأحدثان بالتناوب. المسار البعيد: دورة على المحفوظ المستقرّ فقط. وبعد إتمام أي حزب يبدأ **الجمعة** أسبوع مراجعة شاملة في المسار البعيد يشمل كل المحفوظ، ويُكمل الدورة من حيث توقّفت.
         التخزين تلقائي: يُحفظ في هذه الصفحة عند كل ضغطة، ويبقى بعد إغلاق التطبيق وإعادة فتحه.
         البرنامج لا يتقدّم إلا بضغطك «أنجزت»؛ وما فاتك يتراكم كمتأخرات حتى تُكمله.
       </div>
@@ -468,11 +470,13 @@ async function restoreFromFields(){
   await saveState(STATE); render(); document.getElementById('panel').classList.add('show');
 }
 async function alignFriday(){
+  /* week blocks begin at globalIndex PRE, PRE+7, PRE+14 ... so pinning index PRE to a
+     Friday makes every later block start on a Friday too. */
   const target=nextFridayStr();
-  STATE.startDate=addDays(target,-STATE.completed);
+  STATE.startDate=addDays(target,-PRE);
   await saveState(STATE); render();
   document.getElementById('panel').classList.add('show');
-  alert('تمت المحاذاة: الجلسة القادمة تبدأ يوم الجمعة '+target);
+  alert('تمت المحاذاة: أسبوع المراجعة الشاملة يبدأ الجمعة '+target);
 }
 function togglePanel(){document.getElementById('panel').classList.toggle('show');}
 let toastT;
